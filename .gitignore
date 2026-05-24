@@ -27,9 +27,14 @@ App/android/.gradle/
 App/android/app/build/
 App/android/build/
 
+# Old Android project (replaced by Flutter)
+App/android/
+
+# Old web entry
+App/index.html
+
 # IDE
-.vscode/keil-assistant.log
-.vscode/uv4.log.lock
+.vscode/
 .idea/
 
 # Historical backups (too large)
