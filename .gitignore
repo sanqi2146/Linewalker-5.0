@@ -1,0 +1,45 @@
+# Keil build outputs
+Objects/
+Listings/
+*.build_log.htm
+*.dep
+build.log
+
+# Keil user config
+Project.uvguix.*
+*.scvd
+
+# Flutter / Dart
+App/flutter/.dart_tool/
+App/flutter/build/
+App/flutter/pubspec.lock
+App/flutter/android/.gradle/
+App/flutter/android/app/build/
+App/flutter/android/local.properties
+App/flutter/windows/flutter/
+
+# Gradle large binaries
+*.jar
+*.zip
+
+# Old Android project build artifacts
+App/android/.gradle/
+App/android/app/build/
+App/android/build/
+
+# IDE
+.vscode/keil-assistant.log
+.vscode/uv4.log.lock
+.idea/
+
+# Historical backups (too large)
+Adapt/
+
+# Misc
+.trae/
+DebugConfig/
+lwv5.jpg
+八路巡线红外传感器/
+循迹逻辑_V4.6.9.md
+install_app.bat
+keilkill.bat

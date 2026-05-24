@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover,maximum-scale=1">
+<title>LineWalker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--md-primary:#6750A4;--md-on-primary:#FFF;--md-primary-container:#EADDFF;--md-on-primary-container:#21005D;--md-secondary-container:#E8DEF8;--md-on-secondary-container:#1D192B;--md-surface:#FFFBFE;--md-on-surface:#1C1B1F;--md-surface-variant:#E7E0EC;--md-on-surface-variant:#49454F;--md-outline:#79747E;--md-outline-variant:#CAC4D0;--md-background:#FFFBFE;--md-on-background:#1C1B1F;--md-chart-bg:#ECE6F0;--md-shadow:rgba(0,0,0,.08);--md-scrim:rgba(0,0,0,.4);--md-error:#B3261E;--md-error-container:#F9DEDC;--md-on-error-container:#410E0B;--md-tertiary:#7D5260}
+/* .dark 不再定义 --md-* 静态变量, 全部由 JS genTokens 动态管理 */
+.dark{}.dark .card{background:#25232A}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+body{font-family:'Xiaomi Sans','MiSans','Google Sans','Noto Sans SC',sans-serif;background:var(--md-background);color:var(--md-on-background);min-height:100vh;min-height:100dvh;overflow-x:hidden}
+input,textarea{user-select:text;-webkit-user-select:text}
+.ms{font-family:'Material Symbols Rounded';font-weight:400;font-size:24px;line-height:1;text-transform:none;direction:ltr;font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}
+.ms-filled{font-variation-settings:'FILL'1}
+.ms-14{font-size:14px}.ms-16{font-size:16px}.ms-18{font-size:18px}.ms-20{font-size:20px}.ms-28{font-size:28px}.ms-32{font-size:32px}
+@keyframes pulse-shadow{0%,100%{box-shadow:0 0 0 0 var(--md-primary-container)}50%{box-shadow:0 0 0 10px transparent}}
+
+.nav{position:sticky;top:0;z-index:20;background:var(--md-surface);display:flex;align-items:center;padding:2px 8px;border-bottom:1px solid var(--md-outline-variant);height:46px}
+.nav-left{flex:1;display:flex;align-items:center}.nav-center{display:flex;align-items:center;gap:4px}.nav-right{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.nav-title{font-size:15px;font-weight:500;padding:0 2px;letter-spacing:-.3px;line-height:42px}
+.nav-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--md-on-surface-variant);background:transparent;border:none;flex-shrink:0}
+.nav-icon .ms{font-size:22px}
+.nav-icon:active{transform:scale(.92);background:var(--md-surface-variant)}
+.nav-stop{width:34px;height:34px;border-radius:50%;border:2px solid var(--md-error);cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--md-error);flex-shrink:0}
+.nav-stop .ms{font-size:20px}.nav-stop:active{transform:scale(.9)}.nav-stop.active{background:var(--md-error);color:var(--md-on-primary)}
+.nav-timer{font-size:20px;font-weight:700;font-family:'Xiaomi Sans','MiSans',sans-serif;background:linear-gradient(135deg,var(--md-primary),var(--md-tertiary));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;padding:0 4px;cursor:pointer;line-height:42px}
+.nav-pause{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--md-on-surface-variant);flex-shrink:0}
+.nav-pause .ms{font-size:26px}.nav-pause:active{transform:scale(.92)}.nav-pause.paused{color:var(--md-tertiary)}
+.conn-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;flex-shrink:0;height:32px}
+.conn-badge .ms{font-size:18px}
+.conn-badge.off{background:var(--md-error-container);color:var(--md-on-error-container)}
+.conn-badge.on{background:var(--md-primary-container);color:var(--md-on-primary-container);animation:pulse-shadow 2s infinite}
+
+/* 方案2：box-shadow描边+阴影 */
+.card{background:var(--md-surface);border-radius:24px;margin:6px 10px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 2px 8px rgba(0,0,0,.3);display:flex;flex-direction:column}
+.card-header{display:flex;align-items:center;padding:8px 14px 6px;gap:8px;flex-shrink:0}
+.card-icon{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--md-primary-container);color:var(--md-on-primary-container)}
+.card-title{font-size:13px;font-weight:500;color:var(--md-on-surface)}
+.card-body{padding:0 14px 10px;overflow:hidden;max-height:800px;transition:max-height .4s cubic-bezier(.2,0,0,1),padding .3s,opacity .3s}
+.card-body.collapsed{max-height:0;padding-top:0;padding-bottom:0;opacity:0}
+
+.switch{position:relative;width:44px;height:24px;border-radius:12px;cursor:pointer;transition:background .3s;border:none;outline:none;margin-left:auto;flex-shrink:0}
+.switch.on{background:var(--md-primary)}.switch.off{background:var(--md-surface-variant)}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .3s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch.on::after{left:23px}
+
+.toggle-row{display:flex;align-items:center;padding:6px 0;gap:6px;cursor:pointer}
+.toggle-row .toggle-icon{transition:transform .3s;margin-left:auto;color:var(--md-on-surface-variant);font-size:20px}
+.toggle-row .toggle-icon.open{transform:rotate(180deg)}
+.collapse-body{overflow:hidden;max-height:0;transition:max-height .4s,padding .3s}
+.collapse-body.open{max-height:400px;padding-top:8px}
+
+.chip{background:var(--md-primary-container);color:var(--md-on-primary-container);border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
+.chip:active{filter:brightness(.9)}
+.chip.primary{background:var(--md-primary);color:var(--md-on-primary)}
+.chip.tonal{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.chip-row{display:flex;gap:6px;flex-wrap:wrap}
+.fab{width:52px;height:52px;border-radius:16px;background:var(--md-primary-container);color:var(--md-on-primary-container);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px var(--md-shadow);transition:transform .15s}
+.fab:active{transform:scale(.96)}.fab-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.input-sm{border:none;border-bottom:2px solid var(--md-outline);color:var(--md-on-surface);padding:6px 4px;font-size:13px;outline:none;width:100%;background:var(--md-surface-variant);border-radius:4px 4px 0 0;text-align:center}
+.input-sm:focus{border-bottom-color:var(--md-primary)}
+.sensor-row{display:flex;gap:6px;justify-content:center;padding:3px 0;flex-wrap:wrap}
+.sensor-dot{width:34px;aspect-ratio:1;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;background:var(--md-surface-variant);color:var(--md-on-surface-variant);border:1.5px solid transparent;transition:all .25s}
+.sensor-dot.on{background:var(--md-primary-container);color:var(--md-on-primary-container);border-color:var(--md-primary);box-shadow:0 0 0 3px var(--md-primary-container);transform:scale(1.08)}
+.sensor-dot .sl{font-size:7px;opacity:.7}
+.log-scroll{max-height:160px;overflow-y:auto;font-size:10px;font-family:monospace;line-height:1.5;padding:4px 0}
+.log-line{padding:1px 0;border-bottom:1px solid var(--md-outline-variant)}
+.log-line.sharp{color:var(--md-tertiary)}.log-line.cross{color:var(--md-primary)}.log-line.finish{color:#0a8a3a;font-weight:700}.log-line.info{color:var(--md-on-surface-variant)}
+
+.overlay{position:fixed;inset:0;z-index:50;background:var(--md-scrim);opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:auto}
+.dialog{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--md-surface);border-radius:28px;padding:20px;width:92vw;max-width:640px;max-height:90vh;overflow-y:auto;z-index:51;opacity:0;transition:opacity .25s;pointer-events:none}
+.dialog.show{opacity:1;pointer-events:auto}
+.device-list{max-height:460px;overflow-y:auto}
+.device-item{display:flex;align-items:center;gap:10px;padding:14px 6px;cursor:pointer;border-radius:14px}
+.device-item:active{background:var(--md-surface-variant)}
+.device-item .dev-name{flex:1;font-size:15px;font-weight:500}
+.device-item .dev-check{color:var(--md-primary);display:none;font-size:22px}
+.device-item.connected .dev-check{display:block}
+
+.settings-panel{position:fixed;top:0;right:-360px;width:320px;max-width:80vw;height:100vh;height:100dvh;z-index:51;background:var(--md-surface);transition:right .35s cubic-bezier(.2,0,0,1);display:flex;flex-direction:column;box-shadow:-2px 0 24px var(--md-shadow);overflow:hidden}
+.settings-panel.open{right:0}
+.settings-header{display:flex;align-items:center;padding:10px;gap:8px;border-bottom:1px solid var(--md-outline-variant)}
+.settings-body{flex:1;overflow-y:auto;padding:12px}
+.settings-section{margin-bottom:16px}
+.settings-section h3{font-size:13px;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.settings-section .desc{font-size:11px;color:var(--md-on-surface-variant);margin-bottom:6px}
+.settings-row{display:flex;align-items:center;gap:8px}
+.color-grid{display:flex;gap:6px;flex-wrap:wrap}
+.color-swatch{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:.2s}
+.color-swatch.active{border-color:var(--md-on-surface)}
+.chart-wrap{position:relative}
+.chart-wrap canvas{width:100%;height:120px;border-radius:14px;background:var(--md-chart-bg);display:block}
+.chart-legend{position:absolute;top:4px;left:8px;font-size:9px;font-family:monospace;line-height:1.4}
+.chart-legend .le{color:#4fc3f7;background:rgba(79,195,247,.15);display:block;padding:0 3px;border-radius:3px}
+.chart-legend .lc{color:#e94560;background:rgba(233,69,96,.15);display:block;padding:0 3px;border-radius:3px}
+.chart-time{position:absolute;bottom:2px;right:6px;font-size:8px;font-family:monospace;color:var(--md-on-surface-variant);opacity:.6}
+
+.spin-group{display:flex;flex-direction:column;align-items:center;gap:0;margin-left:2px;flex-shrink:0}
+.spin-btn{width:20px;height:16px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:var(--md-surface-variant);color:var(--md-on-surface-variant);border-radius:2px;font-size:10px;line-height:1;padding:0}
+.spin-btn:active{background:var(--md-primary-container);color:var(--md-on-primary-container)}
+.pid-row{display:flex;gap:2px;align-items:flex-end}
+.wheel-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;position:relative}
+.wheel-body{position:relative;width:100%;height:56px;overflow:hidden;border-radius:10px;background:var(--md-surface-variant);cursor:pointer;user-select:none;-webkit-user-select:none}
+.wheel-strip{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:1px 0;transition:transform .1s ease-out}
+.wheel-val{font-size:12px;font-weight:400;color:var(--md-on-surface-variant);line-height:18px;height:18px;text-align:center;opacity:.35}
+.wheel-val.current{font-size:18px;font-weight:700;color:var(--md-primary);opacity:1}
+.wheel-val.wheel-bump{animation:wheelBump .25s ease;color:var(--md-error)!important}
+.wheel-label{font-size:9px;color:var(--md-on-surface-variant);text-align:center;margin-top:1px}
+@keyframes wheelBump{0%,100%{transform:scale(1)}50%{transform:scale(1.25);color:var(--md-error)}}
+
+.slider-wrap{width:100%;margin-top:4px}
+.slider-input{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:var(--md-surface-variant);outline:none;margin:4px 0}
+.slider-input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;border-radius:50%;background:var(--md-primary);cursor:pointer;border:2px solid var(--md-on-primary);box-shadow:0 1px 3px var(--md-shadow);transition:transform .1s}
+.slider-input::-webkit-slider-thumb:active{transform:scale(1.15)}
+.slider-input:active::-webkit-slider-thumb{background:var(--md-primary-container)}
+.slider-val{font-size:18px;font-weight:500;color:var(--md-primary);text-align:center}
+.slider-label{display:flex;justify-content:space-between;font-size:10px;color:var(--md-on-surface-variant);padding:0 2px}
+
+.fs-overlay{position:fixed;inset:0;z-index:55;background:var(--md-background);display:none;flex-direction:column}
+.fs-overlay.show{display:flex}
+.fs-overlay canvas{flex:1;width:100%;object-fit:fill;touch-action:none}
+.fs-btn{position:absolute;top:12px;z-index:56;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(128,128,128,.4);color:#fff;border:none;cursor:pointer}
+.fs-btn.r12{right:12px}.fs-btn.r58{right:58px}
+
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#333;color:#eee;padding:8px 20px;border-radius:20px;font-size:12px;z-index:60;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+
+@media(orientation:landscape) and (max-height:500px),(min-width:700px){
+  body{max-width:100%;overflow:hidden}
+  #mainContent{display:grid;grid-template-columns:0.8fr 1.4fr 0.8fr;grid-template-rows:1fr 1fr;gap:8px;padding:8px 10px;height:calc(100vh - 44px);overflow:hidden}
+  .card{margin:0;border-radius:20px}
+  .card-header{padding:5px 12px 4px;gap:6px}
+  .card-body{padding:0 12px 8px;max-height:none;overflow:hidden}
+  .card-body.collapsed{max-height:0}
+  .col-left-sensor{grid-column:1;grid-row:1;overflow:hidden}
+  .col-left-motion{grid-column:1;grid-row:2;overflow:hidden}
+  .col-mid{grid-column:2;grid-row:1/3;overflow:hidden;display:flex;flex-direction:column}
+  .col-mid .card-body{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+  .col-mid .chart-wrap{flex:1;display:flex;flex-direction:column}
+  .col-mid .chart-wrap canvas{height:100%;min-height:140px}
+  .col-right{grid-column:3;grid-row:1/3;overflow:hidden;display:flex;flex-direction:column}
+  .log-scroll{max-height:none;flex:1;overflow-y:auto}
+  .sensor-dot{width:26px;font-size:6px}.sensor-dot .sl{font-size:5px}
+  .fab{width:38px;height:38px;border-radius:10px}.fab .ms-28{font-size:22px}
+  .fab-row{flex-wrap:nowrap;gap:4px;justify-content:center}
+  .nav-title{font-size:13px}.dialog{max-height:85vh}
+  .card-icon{width:24px;height:24px;border-radius:12px}.card-icon .ms{font-size:18px}
+  .card-title{font-size:11px}
+  .input-sm{font-size:10px;padding:4px 2px}
+  .spin-btn{width:16px;height:12px;font-size:8px}
+  .chip{font-size:10px;padding:4px 8px}
+  .sensor-row{gap:3px;padding:1px 0}
+  .collapse-body.open{max-height:300px}
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-left"><span class="nav-title">LW v3</span></div>
+  <div class="nav-center">
+    <button class="nav-stop" id="btnStop" onclick="emergencyStop()"><span class="ms">stop_circle</span></button>
+    <span class="nav-timer" id="stopwatch" onclick="onTimerClick()">00:00.0</span>
+    <button class="nav-pause" id="btnPause" onclick="togglePause()"><span class="ms">play_arrow</span></button>
+  </div>
+  <div class="nav-right">
+    <span id="connBadge" class="conn-badge off" onclick="hapticVibrate(10);openBtDialog()"><span class="ms">bluetooth</span> 未连</span>
+    <button class="nav-icon" onclick="hapticVibrate(10);openSettings()"><span class="ms">settings</span></button>
+  </div>
+</nav>
+
+<div id="mainContent">
+  <div class="card col-left-sensor" id="cardSensor">
+    <div class="card-header"><div class="card-icon"><span class="ms">sensors</span></div><div class="card-title">传感器</div><div style="font-size:10px;color:var(--md-on-surface-variant);display:flex;gap:6px;margin-left:auto;margin-right:4px"><span id="errVal">E=---</span><span id="corVal">C=---</span></div><button class="switch on" id="swSensor" onclick="hapticVibrate(10);toggleCard('sensor')"></button></div>
+    <div class="card-body" id="bodySensor">
+      <div class="sensor-row"><div class="sensor-dot" id="sL2"><span class="sl">L2</span>□</div><div class="sensor-dot" id="sL1"><span class="sl">L1</span>□</div><div class="sensor-dot" id="sR1"><span class="sl">R1</span>□</div><div class="sensor-dot" id="sR2"><span class="sl">R2</span>□</div></div>
+      <div class="sensor-row" style="margin-top:3px"><div class="sensor-dot" id="sTL"><span class="sl">TL</span>□</div><div class="sensor-dot" id="sTR"><span class="sl">TR</span>□</div></div>
+    </div>
+  </div>
+
+  <div class="card col-left-motion" id="cardMotion">
+    <div class="card-header"><div class="card-icon"><span class="ms">sports_esports</span></div><div class="card-title">运动控制</div><button class="switch on" id="swMotion" onclick="hapticVibrate(10);toggleCard('motion')"></button></div>
+    <div class="card-body" id="bodyMotion">
+      <div class="chip-row"><button class="chip primary" id="chipTrack" onclick="hapticVibrate(10);sendRaw('G')" style="flex:1;justify-content:center"><span class="ms ms-16">track_changes</span> 循迹</button><button class="chip" id="chipBarrier" onclick="hapticVibrate(10);sendRaw('H')" style="flex:1;justify-content:center"><span class="ms ms-16">construction</span> 避障</button></div>
+      <div class="toggle-row" onclick="hapticVibrate(10);toggleDir(event)"><span style="font-size:12px;color:var(--md-on-surface-variant)">方向控制</span><span class="ms toggle-icon" id="dirIcon" style="font-size:20px">expand_more</span></div>
+      <div class="collapse-body" id="dirBody">
+        <div class="fab-row" style="margin-top:4px">
+          <button class="fab" onclick="hapticVibrate(10);sendRaw('@')"><span class="ms ms-28">arrow_upward</span></button>
+          <button class="fab" onclick="hapticVibrate(10);sendRaw('A')"><span class="ms ms-28">arrow_downward</span></button>
+          <button class="fab" onclick="hapticVibrate(10);sendRaw('C')"><span class="ms ms-28">turn_left</span></button>
+          <button class="fab" onclick="hapticVibrate(10);sendRaw('D')"><span class="ms ms-28">turn_right</span></button>
+          <button class="fab" id="fabRotate" onclick="hapticVibrate(10);toggleRotate()"><span class="ms ms-28">cached</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card col-mid" id="cardPid">
+    <div class="card-header"><div class="card-icon"><span class="ms">monitoring</span></div><div class="card-title">PID</div><button class="switch on" id="swPid" onclick="hapticVibrate(10);toggleCard('pid')"></button></div>
+    <div class="card-body" id="bodyPid">
+      <div class="chart-wrap"><div class="chart-legend"><span class="le">─ 误差</span><span class="lc">─ 修正</span></div><div class="chart-time" id="chartTime">t=0ms</div><canvas id="chart"></canvas></div>
+      <div style="display:flex;gap:4px;align-items:flex-end;margin-top:6px" id="wheelRow">
+        <div class="wheel-wrap" data-id="Kp">
+          <div class="wheel-body" ontouchstart="wheelStart(event,'Kp',12,0,50)" ontouchmove="wheelMove(event,'Kp')" ontouchend="wheelEnd('Kp')">
+            <div class="wheel-strip" id="stripKp"><div class="wheel-val">14</div><div class="wheel-val">13</div><div class="wheel-val current">12</div><div class="wheel-val">11</div><div class="wheel-val">10</div></div>
+          </div>
+          <div class="wheel-label">Kp</div>
+        </div>
+        <div class="wheel-wrap" data-id="Ki">
+          <div class="wheel-body" ontouchstart="wheelStart(event,'Ki',0,0,20)" ontouchmove="wheelMove(event,'Ki')" ontouchend="wheelEnd('Ki')">
+            <div class="wheel-strip" id="stripKi"><div class="wheel-val">2</div><div class="wheel-val">1</div><div class="wheel-val current">0</div><div class="wheel-val">1</div><div class="wheel-val">2</div></div>
+          </div>
+          <div class="wheel-label">Ki</div>
+        </div>
+        <div class="wheel-wrap" data-id="Kd">
+          <div class="wheel-body" ontouchstart="wheelStart(event,'Kd',7,0,30)" ontouchmove="wheelMove(event,'Kd')" ontouchend="wheelEnd('Kd')">
+            <div class="wheel-strip" id="stripKd"><div class="wheel-val">9</div><div class="wheel-val">8</div><div class="wheel-val current">7</div><div class="wheel-val">6</div><div class="wheel-val">5</div></div>
+          </div>
+          <div class="wheel-label">Kd</div>
+        </div>
+        <div class="wheel-wrap" data-id="Sp">
+          <div class="wheel-body" ontouchstart="wheelStart(event,'Sp',45,20,99)" ontouchmove="wheelMove(event,'Sp')" ontouchend="wheelEnd('Sp')">
+            <div class="wheel-strip" id="stripSp"><div class="wheel-val">47</div><div class="wheel-val">46</div><div class="wheel-val current">45</div><div class="wheel-val">44</div><div class="wheel-val">43</div></div>
+          </div>
+          <div class="wheel-label">SP</div>
+        </div>
+      </div>
+      <div class="chip-row" style="margin-top:6px">
+        <button class="chip tonal" onclick="hapticVibrate(10);preset(1)" style="flex:1;justify-content:center">保守</button>
+        <button class="chip tonal" onclick="hapticVibrate(10);preset(2)" style="flex:1;justify-content:center">默认</button>
+        <button class="chip tonal" onclick="hapticVibrate(10);preset(3)" style="flex:1;justify-content:center">激进</button>
+        <button class="chip primary" onclick="hapticVibrate(10);sendCmd('SAVE')" style="flex:1;justify-content:center"><span class="ms ms-14">save</span> 保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card col-right" id="cardLog">
+    <div class="card-header"><div class="card-icon"><span class="ms">receipt_long</span></div><div class="card-title">运行日志</div><button class="switch on" id="swLog" onclick="hapticVibrate(10);toggleCard('log')"></button></div>
+    <div class="card-body" id="bodyLog" style="display:flex;flex-direction:column;flex:1">
+      <div class="log-scroll" id="logArea"></div>
+      <div style="display:flex;gap:6px;margin-top:6px"><button class="chip" style="flex:1;justify-content:center" onclick="hapticVibrate(10);document.getElementById('logArea').innerHTML=''">清空</button><button class="chip" id="chipLogLock" style="flex:1;justify-content:center" onclick="hapticVibrate(10);toggleLogLock()">锁定</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="btOverlay" onclick="closeBtDialog()"></div>
+<div class="dialog" id="btDialog">
+  <h3 style="font-size:16px;font-weight:400;margin-bottom:8px;display:flex;align-items:center;gap:6px"><span class="ms">bluetooth</span> 蓝牙设备</h3>
+  <div class="chip-row" style="margin-bottom:8px">
+    <button class="chip primary" onclick="hapticVibrate(10);scanDevices()"><span class="ms ms-16">search</span> 扫描</button>
+    <button class="chip" onclick="hapticVibrate(10);showManualBt()"><span class="ms ms-16">edit</span> 手动</button>
+  </div>
+  <div class="device-list" id="deviceList"></div>
+  <input class="input-sm" type="text" id="customDevName" placeholder="HC-05" style="margin-top:6px;display:none">
+  <div class="chip-row" id="manualRow" style="margin-top:6px;display:none"><button class="chip primary" style="flex:1;justify-content:center" onclick="hapticVibrate(10);doConnect()">连接</button></div>
+  <button class="chip" id="btnDisconnect" style="width:100%;margin-top:6px;display:none;background:var(--md-error-container);color:var(--md-on-error-container);justify-content:center" onclick="hapticVibrate(10);doDisconnect()"><span class="ms">link_off</span> 断开</button>
+</div>
+
+<div class="overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header"><span style="font-size:18px;flex:1;font-weight:500">设置</span><button class="nav-icon" onclick="hapticVibrate(10);closeSettings()"><span class="ms">close</span></button></div>
+  <div class="settings-body">
+    <div class="settings-section">
+      <h3><span class="ms">dark_mode</span> 深色模式</h3>
+      <div class="chip-row"><button class="chip tonal" id="themeAuto" onclick="hapticVibrate(10);setTheme('auto')">跟随系统</button><button class="chip" id="themeLight" onclick="hapticVibrate(10);setTheme('light')">浅色</button><button class="chip" id="themeDark" onclick="hapticVibrate(10);setTheme('dark')">深色</button></div>
+    </div>
+    <div class="settings-section">
+      <h3><span class="ms">vibration</span> 震动强度</h3>
+      <div class="desc">按钮触感 & 事件反馈</div>
+      <div class="slider-val" id="vibVal">80%</div>
+      <div class="slider-wrap"><input class="slider-input" type="range" id="vibSlider" min="0" max="100" value="80" step="5" oninput="onVibSliderInput(this.value)"></div>
+      <div class="slider-label"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    </div>
+    <div class="settings-section">
+      <h3><span class="ms">palette</span> 主题色</h3>
+      <div class="desc">浅色/深色自适应</div>
+      <div class="color-grid"><div class="color-swatch" style="background:#6750A4" onclick="hapticVibrate(10);pickColor('#6750A4',this)"></div><div class="color-swatch" style="background:#0D6E6E" onclick="hapticVibrate(10);pickColor('#0D6E6E',this)"></div><div class="color-swatch" style="background:#B22248" onclick="hapticVibrate(10);pickColor('#B22248',this)"></div><div class="color-swatch" style="background:#E8612C" onclick="hapticVibrate(10);pickColor('#E8612C',this)"></div><div class="color-swatch" style="background:#1A6CD0" onclick="hapticVibrate(10);pickColor('#1A6CD0',this)"></div><div class="color-swatch" style="background:#6B5E00" onclick="hapticVibrate(10);pickColor('#6B5E00',this)"></div><div class="color-swatch" style="background:#386A20" onclick="hapticVibrate(10);pickColor('#386A20',this)"></div><div class="color-swatch" style="background:#7D5260" onclick="hapticVibrate(10);pickColor('#7D5260',this)"></div></div>
+      <div class="desc" style="margin-top:10px">取色器</div>
+      <input class="input-sm" type="color" id="customColor" value="#6750A4" onchange="hapticVibrate(10);pickColor(this.value,null)" style="height:40px;cursor:pointer">
+      <button class="chip primary" style="width:100%;margin-top:8px;justify-content:center" onclick="hapticVibrate(10);getWallpaper()"><span class="ms ms-16">wallpaper</span> 从壁纸取色</button>
+    </div>
+  </div>
+</div>
+
+<div class="fs-overlay" id="fsOverlay">
+  <canvas id="fsChart"></canvas>
+  <div id="fsLegend" style="position:absolute;top:12px;left:12px;font-size:11px;font-family:monospace;line-height:1.4;z-index:56"><span style="color:#4fc3f7;background:rgba(79,195,247,.2);display:block;padding:2px 5px;border-radius:3px">─ 误差</span><span style="color:#e94560;background:rgba(233,69,96,.2);display:block;padding:2px 5px;border-radius:3px">─ 修正</span></div>
+  <div id="fsTime" style="position:absolute;bottom:8px;right:16px;font-size:12px;font-family:monospace;color:var(--md-on-background);opacity:.7;z-index:56">t=0ms</div>
+  <button class="fs-btn r12" onclick="hapticVibrate(10);closeFullscreen()"><span class="ms">close</span></button>
+  <button class="fs-btn r58" id="fsPauseBtn" onclick="hapticVibrate(10);toggleFsPause()"><span class="ms">pause</span></button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var btConnected=false,connectedDevName='',paused=false,fsPaused=false,timerMs=0,rotateDir=true,vibStrength=80;
+var timerInterval=null;
+var cardsExpanded={sensor:true,pid:true,motion:true,log:true};
+var CARD_MAP={sensor:'Sensor',pid:'Pid',motion:'Motion',log:'Log'};
+var isAndroid=(typeof BTBridge!=='undefined');
+if(!isAndroid)log('浏览器模式','info');
+
+// ===== 卡片模块化系统 =====
+var cardModules={};
+function registerCard(id,config){
+  cardModules[id]=Object.assign({id:id,expanded:true,column:'left'},config);
+  cardsExpanded[id]=(localStorage.getItem('lw-card-'+id)!=='0');
+}
+function toggleCard(id){
+  cardsExpanded[id]=!cardsExpanded[id];
+  localStorage.setItem('lw-card-'+id,cardsExpanded[id]?'1':'0');
+  var body=document.getElementById('body'+CARD_MAP[id]||'body'+id.charAt(0).toUpperCase()+id.slice(1));
+  var sw=document.getElementById('sw'+CARD_MAP[id]||'sw'+id.charAt(0).toUpperCase()+id.slice(1));
+  if(!body||!sw)return;
+  if(cardsExpanded[id]){body.classList.remove('collapsed');sw.classList.add('on');sw.classList.remove('off')}
+  else{body.classList.add('collapsed');sw.classList.remove('on');sw.classList.add('off')}
+}
+registerCard('sensor',{title:'传感器',icon:'sensors',column:'left'});
+registerCard('pid',{title:'PID',icon:'monitoring',column:'mid'});
+registerCard('motion',{title:'运动控制',icon:'sports_esports',column:'left'});
+registerCard('log',{title:'运行日志',icon:'receipt_long',column:'right'});
+
+// ===== 振动触感 (HyperOS API, 强度可调) =====
+function hapticVibrate(ms){
+  if(vibStrength===0)return;
+  var adj=Math.round(ms*vibStrength/80);
+  if(isAndroid&&typeof BTBridge.hapticClick==='function'){BTBridge.hapticClick();return}
+  if(isAndroid&&typeof BTBridge.vibrate==='function'){BTBridge.vibrate(adj||1);return}
+  if(navigator.vibrate)navigator.vibrate(adj||1)
+}
+function hapticConnect(){
+  if(isAndroid&&typeof BTBridge.hapticHeavy==='function'){BTBridge.hapticHeavy();return}
+  if(isAndroid&&typeof BTBridge.vibrate==='function'){BTBridge.vibrate(200);return}
+  if(navigator.vibrate)navigator.vibrate(200)
+}
+function hapticDisconnect(){
+  if(isAndroid&&typeof BTBridge.vibratePattern==='function'){BTBridge.vibratePattern('80,60,120');return}
+  if(navigator.vibrate)navigator.vibrate([80,60,120])
+}
+
+// ===== iPhone风格刻度轮盘 =====
+var wheelVals={Kp:12,Ki:0,Kd:7,Sp:45},wheelLimits={Kp:[0,50],Ki:[0,20],Kd:[0,30],Sp:[20,99]};
+var wheelStartY=0,wheelId='',WHEEL_H=18,wheelLastNotch=0;
+
+function wheelStart(e,id,v,min,max){
+  e.preventDefault();wheelId=id;wheelStartY=e.touches[0].clientY;
+  wheelLastNotch=0;wheelVals[id]=v;wheelLimits[id]=[min,max];
+}
+function wheelMove(e,id){
+  if(wheelId!==id)return;e.preventDefault();
+  var dy=wheelStartY-e.touches[0].clientY;
+  var notch=Math.floor(dy/WHEEL_H);
+  while(notch>wheelLastNotch){wheelStep(id,1);wheelLastNotch++}
+  while(notch<wheelLastNotch){wheelStep(id,-1);wheelLastNotch--}
+}
+function wheelEnd(id){wheelId='';wheelLastNotch=0}
+function wheelStep(id,dir){
+  var v=wheelVals[id],lim=wheelLimits[id],nv=v+dir;
+  var strip=document.getElementById('strip'+id);
+  if(nv<lim[0]||nv>lim[1]){if(strip){var cur=strip.querySelector('.current');if(cur){cur.classList.add('wheel-bump');setTimeout(function(){cur.classList.remove('wheel-bump')},250)}}hapticVibrate(15);return}
+  wheelVals[id]=nv;
+  if(strip){
+    strip.style.transition='transform .1s ease-out';
+    strip.style.transform='translateY('+(-dir*WHEEL_H)+'px)';
+    setTimeout(function(){strip.style.transition='none';strip.style.transform='';updateWheelStrip(id)},100);
+  }
+  syncPID();hapticVibrate(3)
+}
+function updateWheelStrip(id){
+  var strip=document.getElementById('strip'+id),v=wheelVals[id],lim=wheelLimits[id];
+  var items=strip.children;
+  for(var i=0;i<items.length;i++){
+    var pos=i-2,n=v+pos;
+    if(n<lim[0]||n>lim[1]){items[i].textContent='';items[i].style.visibility='hidden'}
+    else{items[i].textContent=n;items[i].style.visibility='visible'}
+    items[i].className='wheel-val'+(n===v?' current':'');
+  }
+}
+
+// 外部更新接口
+function setWheelVal(id,v){
+  var lim=wheelLimits[id];if(v<lim[0])v=lim[0];if(v>lim[1])v=lim[1];
+  wheelVals[id]=v;updateWheelStrip(id);
+}
+function syncPID(){
+  ['Kp','Ki','Kd','Sp'].forEach(function(k){sendCmd(k.charAt(0).toUpperCase()+k.slice(1)+'='+wheelVals[k])})
+}
+function preset(n){
+  var p=[null,{Kp:8,Ki:0,Kd:5,Sp:30},{Kp:12,Ki:0,Kd:7,Sp:45},{Kp:18,Ki:1,Kd:10,Sp:60}][n];
+  Object.keys(p).forEach(function(k){setWheelVal(k,p[k])});sendCmd('PR'+n);sendRaw('G')
+}
+
+// ===== 震动滑块 =====
+var lastVibVal=80,vibSaveTimeout=null;
+function onVibSliderInput(v){
+  vibStrength=parseInt(v);document.getElementById('vibVal').textContent=v+'%';
+  if(Math.abs(vibStrength-lastVibVal)>=5){lastVibVal=vibStrength;hapticVibrate(5)}
+  if(vibSaveTimeout)clearTimeout(vibSaveTimeout);
+  vibSaveTimeout=setTimeout(function(){localStorage.setItem('lw-vib',v)},500)
+}
+var lastMotionCmd='G',isStopped=false,activeMode='G';
+function sendRaw(ch){
+  if(!btConnected){logErr('CONN','sendRaw失败: 未连接');toast('请先连接蓝牙');return;}
+  var map={'@':'前进','A':'后退','B':'急停','C':'左转','D':'右转','E':'顺转','F':'逆转','G':'循迹','H':'避障','I':'跟随'};
+  try{BTBridge.send(ch);diagSendCount++;log('发送: '+(map[ch]||ch),'info')}catch(e){logErr('SEND','发送失败: '+e.message)}
+  hapticVibrate(10);
+  if(ch==='G'||ch==='H'){lastMotionCmd=ch;isStopped=false;updateStopBtn();activeMode=ch;updateModeChips()}
+}
+function updateModeChips(){
+  var t=document.getElementById('chipTrack'),b=document.getElementById('chipBarrier');
+  t.className='chip'+(activeMode==='G'?' primary':''); t.style.flex='1';t.style.justifyContent='center';
+  b.className='chip'+(activeMode==='H'?' primary':''); b.style.flex='1';b.style.justifyContent='center';
+}
+function emergencyStop(){
+  if(!btConnected){toast('请先连接蓝牙');return}
+  if(isStopped){sendRaw(lastMotionCmd);isStopped=false}
+  else{sendRaw('B');isStopped=true}
+  updateStopBtn()
+}
+function updateStopBtn(){
+  var b=document.getElementById('btnStop'),s=b.querySelector('.ms');
+  if(isStopped){b.classList.add('active');s.textContent='not_started';b.title='继续执行'}
+  else{b.classList.remove('active');s.textContent='stop_circle';b.title='急停'}
+}
+function sendCmd(cmd){
+  if(!btConnected){toast('请先连接蓝牙');return;}
+  log('发送: '+cmd,'info');
+  BTBridge.send(cmd+'\r\n');hapticVibrate(10)
+}
+
+// ===== 蓝牙对话框 =====
+function openBtDialog(){document.getElementById('btOverlay').classList.add('open');document.getElementById('btDialog').classList.add('show');scanDevices()}
+function closeBtDialog(){document.getElementById('btOverlay').classList.remove('open');document.getElementById('btDialog').classList.remove('show')}
+function scanDevices(){
+  if(!isAndroid){document.getElementById('deviceList').innerHTML='<div class="device-item" style="opacity:.7">请在APP中使用</div>';return}
+  try{
+    var j=JSON.parse(BTBridge.scan()),h='';
+    if(j.length===0)h='<div class="device-item" style="opacity:.7">未找到设备<small>先配对HC-05</small></div>';
+    else for(var i=0;i<j.length;i++){
+      var d=j[i],c=(d===connectedDevName);
+      h+='<div class="device-item'+(c?' connected':'')+'" onclick="hapticVibrate(10);doConnect(\''+d+'\')"><span class="ms">bluetooth</span><span class="dev-name">'+d+'</span><span class="dev-check ms">check_circle</span></div>'
+    }
+    document.getElementById('deviceList').innerHTML=h
+  }catch(e){document.getElementById('deviceList').innerHTML='<div class="device-item" style="color:var(--md-error)">扫描失败</div>'}
+}
+function showManualBt(){document.getElementById('customDevName').style.display='block';document.getElementById('manualRow').style.display='flex'}
+function doConnect(name){if(!name)name=document.getElementById('customDevName').value.trim();if(!name)return;connectedDevName=name;log('连接 '+name+'…','info');BTBridge.connect(name)}
+function doDisconnect(){connectedDevName='';localStorage.removeItem('lw-last-device');BTBridge.disconnect()}
+window.onBtConnected=function(){btConnected=true;heartbeatAlive=Date.now();diagLastRecv=Date.now();diagDataCount=0;diagSendFail=0;updateConnUI();closeBtDialog();log('蓝牙已连接','info');hapticConnect();localStorage.setItem('lw-last-device',connectedDevName);setTimeout(autoDiagnose,1500)}
+window.onBtDisconnected=function(){btConnected=false;connectedDevName='';heartbeatAlive=0;diagLastRecv=0;updateConnUI();log('蓝牙已断开','info');hapticDisconnect()}
+function updateConnUI(){
+  var b=document.getElementById('connBadge'),d=document.getElementById('btnDisconnect');
+  if(btConnected){b.className='conn-badge on';b.innerHTML='<span class="ms">bluetooth_connected</span> 已连';d.style.display='flex'}
+  else{b.className='conn-badge off';b.innerHTML='<span class="ms">bluetooth</span> 未连';d.style.display='none'}
+}
+
+// ===== 计时器 =====
+function updateStopwatch(){
+  var t=timerMs/1000,s=String(Math.floor(t/60)).padStart(2,'0'),c=String(Math.floor(t%60)).padStart(2,'0'),h=String(Math.floor((t%1)*100)).padStart(2,'0');
+  document.getElementById('stopwatch').textContent=s+':'+c+'.'+h
+}
+function startTimer(){if(timerInterval)return;timerInterval=setInterval(function(){timerMs+=10;updateStopwatch()},10)}
+function stopTimer(){if(timerInterval){clearInterval(timerInterval);timerInterval=null}}
+function onTimerClick(){resetTimer();hapticVibrate(10)}
+function resetTimer(){stopTimer();timerMs=0;updateStopwatch();paused=true;updatePauseBtn()}
+function updatePauseBtn(){
+  var b=document.getElementById('btnPause');
+  if(paused){b.innerHTML='<span class="ms">play_arrow</span>';b.classList.add('paused')}
+  else{b.innerHTML='<span class="ms">pause</span>';b.classList.remove('paused')}
+}
+function togglePause(){
+  if(timerMs===0&&!paused){paused=false;startTimer();updatePauseBtn();return}
+  paused=!paused;updatePauseBtn();
+  if(paused)stopTimer();else startTimer()
+}
+
+// ===== 方向控制折叠 =====
+function toggleDir(e){if(e)e.stopPropagation();var b=document.getElementById('dirBody'),t=document.getElementById('dirIcon');b.classList.toggle('open');t.classList.toggle('open')}
+function toggleRotate(){rotateDir=!rotateDir;if(!btConnected){toast('请先连接蓝牙');return}sendRaw(rotateDir?'E':'F');document.getElementById('fabRotate').style.transform=rotateDir?'rotate(0deg)':'rotate(180deg)'}
+
+// ===== 蓝牙数据回调 =====
+window.onBtData=function(raw){
+  try{
+    diagLastRecv=Date.now();diagDataCount++;
+    if(diagRawDump)log('<R:'+raw.slice(0,120)+'>','');
+    var lines=raw.split('\\n');
+    for(var li=0;li<lines.length;li++){
+      var data=lines[li].replace('\\r','').trim();
+      if(!data)continue;
+      if(data.startsWith('S=')){var b=data.substring(2);if(b.length>=6)updateSensors(b);continue}
+      var em=data.match(/E=([+\-\d.]+),C=([+\-\d.]+)/);
+      if(em){
+        document.getElementById('errVal').textContent='E='+(+em[1]>=0?'+':'')+parseFloat(em[1]).toFixed(1);
+        document.getElementById('corVal').textContent='C='+(+em[2]>=0?'+':'')+parseFloat(em[2]).toFixed(1);
+        if(!paused)addChart(+em[1],+em[2]);
+        continue
+      }
+      var pm=data.match(/KP=(\d+\.?\d*),KI=(\d+\.?\d*),KD=(\d+\.?\d*),SP=(\d+)/);
+      if(pm){['Kp','Ki','Kd','Sp'].forEach(function(k,i){setWheelVal(k,parseFloat(pm[i+1]))});continue}
+      if(data.startsWith('VER=')){log('固件版本 '+data.substring(4),'');continue}
+      if(data==='HB'){heartbeatAlive=Date.now();continue}
+      if(data.startsWith('[')){var c='';if(data.includes('直角'))c='sharp';else if(data.includes('十字'))c='cross';else if(data.includes('终点'))c='finish';log(data,c);continue}
+      if(data==='SAVED'){log('参数已保存','');continue}
+      if(data==='UNKNOWN'){log('小车不认识该指令','');continue}
+      log(data,'info')
+    }
+  }catch(e){logErr('PARSE','解析异常: '+e.message)}
+};
+// 心跳 + 周期健康检查
+var heartbeatAlive=0;
+setInterval(function(){
+  if(btConnected&&heartbeatAlive>0&&Date.now()-heartbeatAlive>10000)logErr('RCV','10秒未收到数据，请检查小车是否在运行','')
+},5000);
+function updateSensors(b){
+  try{
+    var ids=['sL2','sL1','sR1','sR2','sTL','sTR'];
+    for(var i=0;i<6;i++){
+      var e=document.getElementById(ids[i]);
+      if(!e){logErr('SYS','传感器DOM缺失: '+ids[i]);continue}
+      e.className='sensor-dot'+(b[i]==='1'?' on':'');
+      e.innerHTML='<span class="sl">'+ids[i].slice(1)+'</span>'+(b[i]==='1'?'●':'□')
+    }
+  }catch(e){logErr('PARSE','传感器更新异常: '+e.message)}
+}
+var logThrottleMs=0,logLocked=false,diagDataCount=0,diagLastRecv=0,diagSendCount=0,diagSendFail=0,diagRawDump=false;
+function toggleLogLock(){
+  logLocked=!logLocked;
+  var b=document.getElementById('chipLogLock');
+  if(logLocked){b.textContent='锁中';b.classList.add('primary')}else{b.textContent='锁定';b.classList.remove('primary')}
+}
+// 错误码: CONN=连接 SEND=发送 PARSE=解析 RCV=接收 SYS=系统
+function log(msg,c){
+  var now=Date.now();if(now-logThrottleMs<16)return;logThrottleMs=now;
+  var d=new Date();
+  var ts=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+'.'+String(Math.floor(d.getMilliseconds()/100));
+  var a=document.getElementById('logArea'),div=document.createElement('div');
+  div.className='log-line'+(c?' '+c:'');div.textContent='['+ts+'] '+msg;
+  a.appendChild(div);if(!logLocked)a.scrollTop=a.scrollHeight;
+  if(a.children.length>500)a.removeChild(a.firstChild)
+}
+function logErr(code,msg){
+  var c='';
+  if(code==='CONN')c='sharp';
+  else if(code==='SEND')c='error';
+  else if(code==='SYS')c='cross';
+  else c='info';
+  diagSendFail++;
+  log('['+code+'] '+msg,c)
+}
+// 自动诊断：检查所有子系统状态
+function autoDiagnose(){
+  log('=== 系统诊断 ===','cross');
+  log('蓝牙: '+(btConnected?'已连接('+connectedDevName+')':'未连接'),btConnected?'':'sharp');
+  log('Android: '+(isAndroid?'是':'否(浏览器模式)'),'');
+  log('HC-05状态: '+(btConnected?(diagLastRecv>0?(Date.now()-diagLastRecv<3000?'数据通畅('+(Date.now()-diagLastRecv)+'ms前)':'数据断流('+((Date.now()-diagLastRecv)/1000|0)+'s)':'等待数据...'):'无连接'),'');
+  log('接收/发送: '+diagDataCount+'/'+diagSendCount+' 发送失败:'+diagSendFail,'');
+  log('传感器展开: '+(cardsExpanded.sensor?'是':'否'),'');
+  log('PID卡片展开: '+(cardsExpanded.pid?'是':'否'),'');
+  log('震动强度: '+vibStrength+'%','');
+  log('原始数据模式: '+(diagRawDump?'开':'关'),'');
+  if(diagRawDump){diagRawDump=false;log('原始数据模式已关闭','')}
+  log('=== 诊断完成 ===','cross')
+}
+// 开启原始数据转储（30秒后自动关闭）
+function rawDumpOn(){diagRawDump=true;log('原始数据转储开启(30秒)','');setTimeout(function(){if(diagRawDump){diagRawDump=false;log('原始数据转储已关闭','')}},30000)}
+function toast(msg){
+  var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show')},1800)
+}
+
+// ===== 曲线图 =====
+var cv=document.getElementById('chart'),cx=cv.getContext('2d'),MAX=200;
+var eh=new Array(MAX).fill(0),ch=new Array(MAX).fill(0),ci=0,chartMs=0,Y_RANGE=5;
+function getChartBg(){
+  var bg=getComputedStyle(document.documentElement).getPropertyValue('--md-chart-bg').trim();
+  return bg||(document.body.classList.contains('dark')?'#252532':'#ECE6F0')
+}
+function getGridColor(){
+  var gv=getComputedStyle(document.documentElement).getPropertyValue('--md-outline-variant').trim();
+  return gv||'#CAC4D0'
+}
+function drawChart(canvas,ctx,errH,corH,idx){
+  var w=canvas.clientWidth||canvas.width,h=canvas.clientHeight||canvas.height;
+  var pixelRatio=window.devicePixelRatio||1;
+  canvas.width=w*pixelRatio;canvas.height=h*pixelRatio;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(pixelRatio,pixelRatio);
+  var bg=getChartBg();
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  var mid=h/2,gridC=getGridColor();
+  ctx.strokeStyle=gridC;ctx.lineWidth=1;
+  for(var i=0;i<=4;i++){
+    var val=Y_RANGE-i*Y_RANGE*2/4,y=mid-val/Y_RANGE*(mid-10);
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()
+  }
+  var s=mid/Y_RANGE;
+  ctx.strokeStyle='#4fc3f7';ctx.lineWidth=2;ctx.beginPath();
+  for(var i=0;i<errH.length;i++){
+    var j=(idx+i)%errH.length,x=w*i/errH.length,y=mid-errH[j]*s;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)
+  }
+  ctx.stroke();
+  ctx.strokeStyle='#e94560';ctx.lineWidth=2;ctx.beginPath();
+  for(var i=0;i<corH.length;i++){
+    var j2=(idx+i)%corH.length,x2=w*i/corH.length,y2=mid-corH[j2]*s;
+    i===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2)
+  }
+  ctx.stroke()
+}
+function addChart(e,c){
+  if(paused)return;
+  eh[ci]=e;ch[ci]=c;ci=(ci+1)%MAX;chartMs+=50;
+  document.getElementById('chartTime').textContent='t='+chartMs+'ms';
+  if(ci%4===0)drawChart(cv,cx,eh,ch,ci)
+}
+setInterval(function(){
+  if(!paused)drawChart(cv,cx,eh,ch,ci)
+},300);
+
+// ===== 双击全屏曲线图 =====
+cv.addEventListener('dblclick',function(){hapticVibrate(10);openFullscreen()});
+var fsInterval=null,fsScale=1,fsOffsetX=0,fsOffsetY=0;
+function openFullscreen(){
+  document.getElementById('fsOverlay').classList.add('show');
+  var fc=document.getElementById('fsChart');
+  var fcx=fc.getContext('2d');
+  fsScale=1;fsOffsetX=0;fsOffsetY=0;
+  document.getElementById('fsTime').textContent='t='+chartMs+'ms';
+  drawFsChart();
+  if(fsInterval)clearInterval(fsInterval);
+  fsInterval=setInterval(function(){
+    if(!fsPaused){document.getElementById('fsTime').textContent='t='+chartMs+'ms';drawFsChart()}
+  },300);
+  setupFsPinchZoom(fc);
+}
+function closeFullscreen(){
+  document.getElementById('fsOverlay').classList.remove('show');
+  if(fsInterval)clearInterval(fsInterval);fsInterval=null;
+}
+function toggleFsPause(){
+  fsPaused=!fsPaused;
+  document.getElementById('fsPauseBtn').innerHTML='<span class="ms">'+(fsPaused?'play_arrow':'pause')+'</span>'
+}
+function drawFsChart(){
+  var fc=document.getElementById('fsChart'),fcx=fc.getContext('2d');
+  var w=fc.clientWidth||fc.width,h=fc.clientHeight||fc.height;
+  var pixelRatio=window.devicePixelRatio||1;
+  fc.width=w*pixelRatio;fc.height=h*pixelRatio;
+  fcx.setTransform(1,0,0,1,0,0);
+  fcx.scale(pixelRatio,pixelRatio);
+  fcx.save();
+  fcx.translate(fsOffsetX,fsOffsetY);
+  fcx.scale(fsScale,fsScale);
+  var bg=getChartBg();
+  fcx.fillStyle=bg;fcx.fillRect(-fsOffsetX/fsScale,-fsOffsetY/fsScale,w/fsScale,h/fsScale);
+  var mid=h/(2*fsScale)-fsOffsetY/fsScale,gridC=getGridColor();
+  fcx.strokeStyle=gridC;fcx.lineWidth=1/fsScale;
+  for(var i=0;i<=4;i++){
+    var val=Y_RANGE-i*Y_RANGE*2/4,yy=mid-val/Y_RANGE*(mid-10);
+    fcx.beginPath();fcx.moveTo(-fsOffsetX/fsScale,yy);fcx.lineTo(w/fsScale-fsOffsetX/fsScale,yy);fcx.stroke()
+  }
+  var s=mid/Y_RANGE;
+  fcx.strokeStyle='#4fc3f7';fcx.lineWidth=2/fsScale;fcx.beginPath();
+  for(var i=0;i<eh.length;i++){
+    var j=(ci+i)%eh.length,x=w*i/(eh.length*fsScale)-fsOffsetX/fsScale,yy=mid-eh[j]*s;
+    i===0?fcx.moveTo(x,yy):fcx.lineTo(x,yy)
+  }
+  fcx.stroke();
+  fcx.strokeStyle='#e94560';fcx.lineWidth=2/fsScale;fcx.beginPath();
+  for(var i=0;i<ch.length;i++){
+    var j2=(ci+i)%ch.length,x2=w*i/(ch.length*fsScale)-fsOffsetX/fsScale,y2=mid-ch[j2]*s;
+    i===0?fcx.moveTo(x2,y2):fcx.lineTo(x2,y2)
+  }
+  fcx.stroke();
+  fcx.restore()
+}
+function setupFsPinchZoom(canvas){
+  var startDist=0,lastMidX=0,lastMidY=0,panStart=false;
+  canvas.ontouchstart=function(e){
+    if(e.touches.length===2){
+      startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      lastMidX=(e.touches[0].clientX+e.touches[1].clientX)/2;
+      lastMidY=(e.touches[0].clientY+e.touches[1].clientY)/2
+    }else if(e.touches.length===1){panStart=true}
+  };
+  canvas.ontouchmove=function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      if(startDist>0){var ns=fsScale*(d/startDist);fsScale=Math.max(.5,Math.min(5,ns));startDist=d}
+      var mx=(e.touches[0].clientX+e.touches[1].clientX)/2,my=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      fsOffsetX+=mx-lastMidX;fsOffsetY+=my-lastMidY;lastMidX=mx;lastMidY=my;
+      drawFsChart()
+    }else if(e.touches.length===1&&panStart){panStart=false}
+  };
+  canvas.ontouchend=function(){startDist=0;panStart=false}
+}
+
+// ===== 主题系统 =====
+function hexToRgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+function lerp(a,b,t){return a+(b-a)*t}
+function toneColor(r,g,b,tone){
+  if(tone>=50){var f=(tone-50)/50;return'#'+[r,g,b].map(function(c){return Math.round(lerp(c,255,f)).toString(16).padStart(2,'0')}).join('')}
+  var f=(50-tone)/50;return'#'+[r,g,b].map(function(c){return Math.round(lerp(c,0,f)).toString(16).padStart(2,'0')}).join('')
+}
+function genTokens(h,isDark){
+  var rgb=hexToRgb(h),tc=function(t){return toneColor(rgb[0],rgb[1],rgb[2],t)};
+  if(isDark)return{
+    primary:tc(80),onPrimary:tc(20),primaryContainer:tc(30),onPrimaryContainer:tc(90),
+    secondaryContainer:tc(28),onSecondaryContainer:tc(90),
+    surface:tc(6),onSurface:tc(90),surfaceVariant:tc(28),onSurfaceVariant:tc(80),
+    outline:tc(60),outlineVariant:tc(28),
+    background:tc(6),onBackground:tc(90),
+    chartBg:'#'+rgb.map(function(c){return Math.round(c*0.18).toString(16).padStart(2,'0')}).join(''),
+    shadow:'rgba(0,0,0,.3)',scrim:'rgba(0,0,0,.6)',
+    error:'#F2B8B5',errorContainer:'#8C1D18',onErrorContainer:'#F9DEDC',tertiary:'#EFB8C8'
+  };
+  return{
+    primary:tc(40),onPrimary:'#FFF',primaryContainer:tc(90),onPrimaryContainer:tc(10),
+    secondaryContainer:tc(92),onSecondaryContainer:tc(10),
+    surface:tc(98),onSurface:tc(10),surfaceVariant:tc(92),onSurfaceVariant:tc(30),
+    outline:tc(50),outlineVariant:tc(80),
+    background:tc(98),onBackground:tc(10),
+    chartBg:'#'+rgb.map(function(c){return Math.round(lerp(c,255,0.88)).toString(16).padStart(2,'0')}).join(''),
+    shadow:'rgba(0,0,0,.08)',scrim:'rgba(0,0,0,.4)',
+    error:'#B3261E',errorContainer:'#F9DEDC',onErrorContainer:'#410E0B',tertiary:'#7D5260'
+  }
+}
+function applyTokens(o){
+  Object.keys(o).forEach(function(k){
+    document.documentElement.style.setProperty('--md-'+k.replace(/([A-Z])/g,'-$1').toLowerCase(),o[k])
+  })
+}
+var currentPrimaryHex='#6750A4',currentThemeMode='auto';
+function pickColor(h,el){
+  currentPrimaryHex=h;
+  if(el){document.querySelectorAll('.color-swatch').forEach(function(s){s.classList.remove('active')});el.classList.add('active')}
+  document.getElementById('customColor').value=h;
+  localStorage.setItem('lw-primary',h);
+  applyTokens(genTokens(h,document.body.classList.contains('dark')));
+  drawChart(cv,cx,eh,ch,ci)
+}
+function setTheme(mode){
+  currentThemeMode=mode;
+  var isDark=(mode==='auto')?window.matchMedia('(prefers-color-scheme:dark)').matches:(mode==='dark');
+  document.body.classList.toggle('dark',isDark);
+  applyTokens(genTokens(currentPrimaryHex,isDark));
+  document.getElementById('themeAuto').className='chip';document.getElementById('themeLight').className='chip';document.getElementById('themeDark').className='chip';
+  document.getElementById('theme'+mode.charAt(0).toUpperCase()+mode.slice(1)).className='chip tonal';
+  localStorage.setItem('lw-theme',mode);
+  drawChart(cv,cx,eh,ch,ci);
+}
+function openSettings(){document.getElementById('settingsOverlay').classList.add('open');document.getElementById('settingsPanel').classList.add('open')}
+function closeSettings(){document.getElementById('settingsOverlay').classList.remove('open');document.getElementById('settingsPanel').classList.remove('open')}
+document.getElementById('settingsOverlay').addEventListener('click',closeSettings);
+function getWallpaper(){if(!isAndroid){toast('仅APP可用');return}BTBridge.getWallpaperColor();toast('提取中…')}
+window.onWallpaperColor=function(h){pickColor(h,null);toast('已应用: '+h)}
+
+document.addEventListener('DOMContentLoaded',function(){
+  currentThemeMode=localStorage.getItem('lw-theme')||'auto';
+  currentPrimaryHex=localStorage.getItem('lw-primary')||'#6750A4';
+  pureBlack=localStorage.getItem('lw-pureblack')==='1';
+  vibStrength=parseInt(localStorage.getItem('lw-vib'))||80;
+  setTheme(currentThemeMode);
+  document.getElementById('customColor').value=currentPrimaryHex;
+  document.querySelectorAll('.color-swatch').forEach(function(s){var bg=s.getAttribute('style')||'';s.classList.toggle('active',bg.indexOf(currentPrimaryHex)!==-1)});
+  document.getElementById('vibSlider').value=vibStrength;
+  document.getElementById('vibVal').textContent=vibStrength+'%';
+  drawChart(cv,cx,eh,ch,ci);updateConnUI();
+  var lastDev=localStorage.getItem('lw-last-device');
+  if(isAndroid&&lastDev){toast('自动连接 '+lastDev+'…');setTimeout(function(){doConnect(lastDev)},800)}
+})
+</script>
+</body>
+</html>
