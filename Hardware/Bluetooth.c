@@ -23,9 +23,20 @@
 
 static uint8_t Num = 3;  // 开机默认停止
 
+// PB12轻触开关: 按下=启动G(循迹), 再按=停止B
+static uint8_t btn_last = 1;       // 上帧电平
+static uint16_t btn_debounce = 0;  // 消抖计数器
+
 void Bluetooth_Init(void)
 {
 	Serial_Init();
+
+	// PB12 → 轻触开关(IPU上拉, 按下=0)
+	GPIO_InitTypeDef g;
+	g.GPIO_Mode  = GPIO_Mode_IPU;
+	g.GPIO_Speed = GPIO_Speed_50MHz;
+	g.GPIO_Pin   = GPIO_Pin_12;
+	GPIO_Init(GPIOB, &g);
 }
 
 // 将单个模式切换字节解析为Num
@@ -63,13 +74,35 @@ static int dispatch_serial_byte(void)
 }
 
 // Housekeeping: 所有模式循环里都要调
-// 负责传感器全局上报(不论模式) + 编码器 + 蜂鸣器 + 心跳
+// 负责传感器全局上报(不论模式) + 编码器 + 蜂鸣器 + 心跳 + PB12按钮
 static void housekeeping(void)
 {
 	static uint16_t hb_cnt = 0;  // 心跳计数器
 
 	Buzzer_Tick();
 	Encoder_Process();
+
+	// PB12轻触开关: 按下→启动/停止循迹
+	{
+		uint8_t btn_now = GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12);
+		if (btn_now == btn_last) {
+			if (++btn_debounce >= 20) {  // 20ms稳定
+				if (btn_debounce == 20 && btn_now == 0) {  // 下降沿
+					if (Num == 8) {  // 循迹中→停止
+						Car_Stop();
+						Num = 3;
+						BluetoothCmd_ReportSTA(0);
+					} else {         // 停止/其他→启动循迹
+						BluetoothCmd_ReportSTA(1);
+						Num = 8;
+					}
+				}
+			}
+		} else {
+			btn_debounce = 0;
+			btn_last = btn_now;
+		}
+	}
 
 	// 心跳: 约500ms一次, HB=1运行中 HB=0静止
 	if (++hb_cnt >= 500) {
